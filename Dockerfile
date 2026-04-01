@@ -1,26 +1,30 @@
-# Используем официальный легкий образ Python
-FROM python:3.11-slim
+FROM python:3.12-slim
 
-# Запрещаем Python писать файлы .pyc на диск и разрешаем выводить логи в консоль без задержек
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+# Настройки Python и Poetry
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    POETRY_VERSION=2.3.3 \
+    POETRY_VIRTUALENVS_CREATE=false
 
-# Рабочая директория внутри контейнера
 WORKDIR /app
 
-# Устанавливаем системные зависимости для работы с Postgres (если понадобится позже)
+# Устанавливаем системные зависимости для сборки (если пригодятся для БД)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Копируем файл с зависимостями
-COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Ставим сам poetry
+RUN pip install "poetry==$POETRY_VERSION"
 
-# Копируем всё остальное
+# Копируем только файлы зависимостей (для кэширования слоев)
+COPY pyproject.toml poetry.lock* ./
+
+# Устанавливаем библиотеки без создания venv (внутри контейнера это не нужно)
+RUN poetry install --no-interaction --no-ansi --no-root
+
+# Копируем остальной код
 COPY . .
 
-# Запуск через uvicorn (предполагаем, что главный файл main.py и объект FastAPI называется app)
+# Запуск через uvicorn
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
