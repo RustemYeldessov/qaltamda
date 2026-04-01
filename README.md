@@ -1,1 +1,2 @@
-# Qaltamda
+# Qaltamda 
+Веб-приложение на FastAPI для ведения расходов
