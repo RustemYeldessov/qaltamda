@@ -27,4 +27,4 @@ RUN poetry install --no-interaction --no-ansi --no-root
 COPY . .
 
 # Запуск через uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
