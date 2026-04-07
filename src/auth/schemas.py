@@ -31,3 +31,7 @@ class UserOut(UserBase):
     # не только со словарями, но и с объектами ORM
     class Config:
         from_attributes = True
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
