@@ -1,10 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session, DeclarativeBase
+from src.auth.schemas import UserLogin
 from src.database import get_db
 from src.auth import models, schemas, service
+from src.config import settings
+from authx import AuthX, AuthXConfig
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+config = AuthXConfig()
+config.JWT_SECRET_KEY = settings.JWT_SECRET_KEY
+config.JWT_ACCESS_COOKIE_NAME = settings.JWT_ACCESS_COOKIE_NAME
+config.JWT_TOKEN_LOCATION = ["cookies"]
+
+security = AuthX(config=config)
 
 @router.get(
     "/users",
@@ -42,3 +51,26 @@ def register_user(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_user)
     return db_user
+
+
+@router.post("/login")
+def login(creds: UserLogin, response: Response, db: Session = Depends(get_db)):
+    # 1. Поиск пользователя в БД
+    user = db.query(models.UserModel).filter(models.UserModel.username == creds.username).first()
+
+    # 2. Если пользователь не найден
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    # 3. Проверка пароля
+    is_verified = service.verify_password(creds.password, user.hashed_password)
+
+    if not is_verified:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    # 4. Создание токена, привязанного к реальному ID пользователя
+    token = security.create_access_token(uid=str(user.id))
+
+    # 5. Устанавливаем токен в куки через AuthX
+    security.set_access_cookies(token, response=response)
+
+    return {"message": "Logged in successfully"}
