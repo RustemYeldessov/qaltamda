@@ -74,3 +74,9 @@ def login(creds: UserLogin, response: Response, db: Session = Depends(get_db)):
     security.set_access_cookies(token, response=response)
 
     return {"message": "Logged in successfully"}
+
+
+@router.post("/logout")
+def logout(response: Response):
+    security.unset_access_cookies(response)
+    return {"message": "Logged out successfully"}
